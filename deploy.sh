@@ -48,7 +48,6 @@ do
       --data-urlencode "pw_weak=1"
     if [ $? -eq 0 ]
     then
-        # curl didn't return 0 - failure
         break # terminate loop
     fi
     echo -en "."   # display # of requests each iteration

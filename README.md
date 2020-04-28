@@ -1,8 +1,13 @@
 # Demo migration workload
 to demonstrate the OpenShift Cluster Application Migration (CAM) tool 
 
+## Deployment
 
-Run `./deploy.sh` 
+Run 
+
+```
+./deploy.sh
+```
 
 ## Delete all
 
@@ -40,3 +45,10 @@ spec:
   date_of_manufacturing: "2014-07-01T00:00:00Z"
   engine: N57D30
 EOF
+```
+
+## How the environment looks like
+
+![](images/deploy.png)
+![](images/web-console-1.png)
+![](images/web-console-2.png)
