@@ -5,7 +5,7 @@ metadata:
   name: project-admins
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: admin
 subjects:
 - apiGroup: rbac.authorization.k8s.io
