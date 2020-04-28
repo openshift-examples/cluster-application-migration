@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  creationTimestamp: null
+  generation: 1
+  labels:
+    name: hello-daemonset
+  name: hello-daemonset
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      name: hello-daemonset
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: hello-daemonset
+    spec:
+      containers:
+      - image: openshift/hello-openshift
+        imagePullPolicy: Always
+        name: registry
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: default
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 10
+  templateGeneration: 1
+  updateStrategy:
+    type: OnDelete

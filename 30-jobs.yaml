@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    labels:
+      job-name: pi
+    name: pi
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        job-name: pi
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          job-name: pi
+        name: pi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+- apiVersion: batch/v1beta1
+  kind: CronJob
+  metadata:
+    name: pi
+  spec:
+    concurrencyPolicy: Allow
+    failedJobsHistoryLimit: 1
+    jobTemplate:
+      metadata:
+        creationTimestamp: null
+      spec:
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              parent: cronjobpi
+          spec:
+            containers:
+            - command:
+              - perl
+              - -Mbignum=bpi
+              - -wle
+              - print bpi(2000)
+              image: perl
+              imagePullPolicy: Always
+              name: pi
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: OnFailure
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+    schedule: '*/1 * * * *'
+    successfulJobsHistoryLimit: 3
+    suspend: false
+- apiVersion: batch/v1beta1
+  kind: CronJob
+  metadata:
+    name: picron
+  spec:
+    concurrencyPolicy: Allow
+    failedJobsHistoryLimit: 1
+    jobTemplate:
+      metadata:
+        creationTimestamp: null
+      spec:
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              parent: cronjobpi
+          spec:
+            containers:
+            - command:
+              - perl
+              - -Mbignum=bpi
+              - -wle
+              - print bpi(2000)
+              image: perl
+              imagePullPolicy: Always
+              name: pi
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: OnFailure
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+    schedule: '*/1 * * * *'
+    successfulJobsHistoryLimit: 3
+    suspend: false
