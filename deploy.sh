@@ -17,11 +17,3 @@ done
 
 echo "# Deploy cakephp-mysql-persistent template"
 oc new-app -n $NAMESPACE cakephp-mysql-persistent
-
-
-# Jenkins!!
-# jenkins-ephemeral-template
-
-
-
-# oc delete project --wait=false -l demo=migration
