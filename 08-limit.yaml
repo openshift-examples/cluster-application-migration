@@ -13,10 +13,10 @@ spec:
       memory: 6Mi
     type: Pod
   - default:
-      cpu: 1
+      cpu: 500m
       memory: 200Mi
     defaultRequest:
-      cpu: 1
+      cpu: 500m
       memory: 100Mi
     max:
       cpu: "4"

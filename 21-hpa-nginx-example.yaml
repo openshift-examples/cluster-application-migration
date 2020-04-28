@@ -1,12 +1,12 @@
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: cakephp-mysql-persistent
+  name: nginx-example
 spec:
   maxReplicas: 10
   minReplicas: 2
   scaleTargetRef:
     apiVersion: apps.openshift.io/v1
     kind: DeploymentConfig
-    name: cakephp-mysql-persistent
+    name: nginx-example
   targetCPUUtilizationPercentage: 80
