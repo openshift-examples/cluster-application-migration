@@ -1,22 +1,12 @@
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  annotations:
-    autoscaling.alpha.kubernetes.io/conditions: '[{"type":"AbleToScale","status":"True","lastTransitionTime":"2020-04-27T06:13:03Z","reason":"SucceededGetScale","message":"the
-      HPA controller was able to get the target''s current scale"},{"type":"ScalingActive","status":"False","lastTransitionTime":"2020-04-27T06:13:33Z","reason":"FailedGetResourceMetric","message":"the
-      HPA was unable to compute the replica count: missing request for cpu on container
-      jenkins in pod migration-demo/jenkins-1-p8j54"}]'
-  creationTimestamp: null
-  name: jenkins
+  name: cakephp-mysql-persistent
 spec:
   maxReplicas: 10
   minReplicas: 2
   scaleTargetRef:
     apiVersion: apps.openshift.io/v1
     kind: DeploymentConfig
-    name: jenkins
+    name: cakephp-mysql-persistent
   targetCPUUtilizationPercentage: 80
-status:
-  currentReplicas: 2
-  desiredReplicas: 2
-  lastScaleTime: "2020-04-27T06:13:03Z"

@@ -15,5 +15,8 @@ for file in ??-*.yaml ; do
   oc apply -n $NAMESPACE -f $file;
 done
 
+echo "# Start nodejs build pipeline"
+oc start-build -n $NAMESPACE nodejs-sample-pipeline
+
 echo "# Deploy cakephp-mysql-persistent template"
 oc new-app -n $NAMESPACE cakephp-mysql-persistent
