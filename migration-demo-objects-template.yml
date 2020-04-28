@@ -1,0 +1,1669 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: migration-demo-objects
+objects:
+- apiVersion: extensions/v1beta1
+  kind: DaemonSet
+  metadata:
+    creationTimestamp: null
+    generation: 1
+    labels:
+      name: hello-daemonset
+    name: hello-daemonset
+  spec:
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        name: hello-daemonset
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          name: hello-daemonset
+      spec:
+        containers:
+        - image: openshift/hello-openshift
+          imagePullPolicy: Always
+          name: registry
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: default
+        serviceAccountName: default
+        terminationGracePeriodSeconds: 10
+    templateGeneration: 1
+    updateStrategy:
+      type: OnDelete
+  status:
+    currentNumberScheduled: 2
+    desiredNumberScheduled: 8
+    numberAvailable: 2
+    numberMisscheduled: 0
+    numberReady: 2
+    numberUnavailable: 6
+    observedGeneration: 1
+    updatedNumberScheduled: 2
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: cakephp-mysql-persistent
+  spec:
+    host: cakephp-mysql-persistent-migration-demo.apps.ocp1.stormshift.coe.muc.redhat.com
+    to:
+      kind: Service
+      name: cakephp-mysql-persistent
+      weight: 100
+    wildcardPolicy: None
+  status:
+    ingress:
+    - conditions:
+      - lastTransitionTime: "2020-04-24T05:16:42Z"
+        status: "True"
+        type: Admitted
+      host: cakephp-mysql-persistent-migration-demo.apps.ocp1.stormshift.coe.muc.redhat.com
+      routerName: router
+      wildcardPolicy: None
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      haproxy.router.openshift.io/timeout: 4m
+      openshift.io/host.generated: "true"
+      template.openshift.io/expose-uri: http://{.spec.host}{.spec.path}
+    creationTimestamp: null
+    labels:
+      app: jenkins-ephemeral
+      template: jenkins-ephemeral-template
+    name: jenkins
+  spec:
+    host: jenkins-migration-demo.apps.ocp1.stormshift.coe.muc.redhat.com
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: jenkins
+      weight: 100
+    wildcardPolicy: None
+  status:
+    ingress:
+    - conditions:
+      - lastTransitionTime: "2020-04-24T05:17:32Z"
+        status: "True"
+        type: Admitted
+      host: jenkins-migration-demo.apps.ocp1.stormshift.coe.muc.redhat.com
+      routerName: router
+      wildcardPolicy: None
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes and load balances the application pods
+      service.alpha.openshift.io/dependencies: '[{"name": "mysql", "kind": "Service"}]'
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: cakephp-mysql-persistent
+  spec:
+    ports:
+    - name: web
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      name: cakephp-mysql-persistent
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.openshift.io/dependencies: '[{"name": "jenkins-jnlp", "namespace":
+        "", "kind": "Service"}]'
+      service.openshift.io/infrastructure: "true"
+    creationTimestamp: null
+    labels:
+      app: jenkins-ephemeral
+      template: jenkins-ephemeral-template
+    name: jenkins
+  spec:
+    ports:
+    - name: web
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      name: jenkins
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: jenkins-ephemeral
+      template: jenkins-ephemeral-template
+    name: jenkins-jnlp
+  spec:
+    ports:
+    - name: agent
+      port: 50000
+      protocol: TCP
+      targetPort: 50000
+    selector:
+      name: jenkins
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes the database server
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: mysql
+  spec:
+    ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+    selector:
+      name: mysql
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: mysql-ocs
+    name: mysql-ocs
+  spec:
+    clusterIP: None
+    ports:
+    - port: 3306
+      protocol: TCP
+      targetPort: 3306
+    selector:
+      app: mysql-ocs
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      description: Defines how to build the application
+      template.alpha.openshift.io/wait-for-ready: "true"
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: cakephp-mysql-persistent
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: cakephp-mysql-persistent:latest
+    postCommit:
+      script: ./vendor/bin/phpunit
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        uri: https://github.com/sclorg/cakephp-ex.git
+      type: Git
+    strategy:
+      sourceStrategy:
+        env:
+        - name: COMPOSER_MIRROR
+        from:
+          kind: ImageStreamTag
+          name: php:7.1
+          namespace: openshift
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers:
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+    - github:
+        secret: 0XCjlnwrX67H5xdAkvLJE77hJ6D23u1rED2aHDef
+      type: GitHub
+  status:
+    lastVersion: 0
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    creationTimestamp: null
+    name: nodejs-sample-pipeline
+  spec:
+    nodeSelector: {}
+    output: {}
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      type: None
+    strategy:
+      jenkinsPipelineStrategy:
+        jenkinsfile: |-
+          // path of the template to use
+          def templatePath = 'nodejs-mongodb-example'
+          // name of the template that will be created
+          def templateName = 'nodejs-mongodb-example'
+          // NOTE, the "pipeline" directive/closure from the declarative pipeline syntax needs to include, or be nested outside,
+          // and "openshift" directive/closure from the OpenShift Client Plugin for Jenkins.  Otherwise, the declarative pipeline engine
+          // will not be fully engaged.
+          pipeline {
+              agent {
+                node {
+                  // spin up a node.js slave pod to run this build on
+                  label 'nodejs'
+                }
+              }
+              options {
+                  // set a timeout of 20 minutes for this pipeline
+                  timeout(time: 20, unit: 'MINUTES')
+              }
+              stages {
+                  stage('preamble') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.withProject() {
+                                      echo "Using project: ${openshift.project()}"
+                                  }
+                              }
+                          }
+                      }
+                  }
+                  stage('cleanup') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.withProject() {
+                                      // delete everything with this template label
+                                      openshift.selector("all", [ template : templateName ]).delete()
+                                      // delete any secrets with this template label
+                                      if (openshift.selector("secrets", templateName).exists()) {
+                                          openshift.selector("secrets", templateName).delete()
+                                      }
+                                  }
+                              }
+                          } // script
+                      } // steps
+                  } // stage
+                  stage('create') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.withProject() {
+                                      // create a new application from the templatePath
+                                      openshift.newApp(templatePath)
+                                  }
+                              }
+                          } // script
+                      } // steps
+                  } // stage
+                  stage('build') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.withProject() {
+                                      def builds = openshift.selector("bc", templateName).related('builds')
+                                      builds.untilEach(1) {
+                                          return (it.object().status.phase == "Complete")
+                                      }
+                                  }
+                              }
+                          } // script
+                      } // steps
+                  } // stage
+                  stage('deploy') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.withProject() {
+                                      def rm = openshift.selector("dc", templateName).rollout()
+                                      openshift.selector("dc", templateName).related('pods').untilEach(1) {
+                                          return (it.object().status.phase == "Running")
+                                      }
+                                  }
+                              }
+                          } // script
+                      } // steps
+                  } // stage
+                  stage('tag') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.withProject() {
+                                      // if everything else succeeded, tag the ${templateName}:latest image as ${templateName}-staging:latest
+                                      // a pipeline build config for the staging environment can watch for the ${templateName}-staging:latest
+                                      // image to change and then deploy it to the staging environment
+                                      openshift.tag("${templateName}:latest", "${templateName}-staging:latest")
+                                  }
+                              }
+                          } // script
+                      } // steps
+                  } // stage
+              } // stages
+          } // pipeline
+      type: JenkinsPipeline
+    triggers: []
+  status:
+    lastVersion: 0
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the application server
+      template.alpha.openshift.io/wait-for-ready: "true"
+    creationTimestamp: null
+    generation: 2
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: cakephp-mysql-persistent
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      name: cakephp-mysql-persistent
+    strategy:
+      activeDeadlineSeconds: 21600
+      recreateParams:
+        pre:
+          execNewPod:
+            command:
+            - ./migrate-database.sh
+            containerName: cakephp-mysql-persistent
+          failurePolicy: Retry
+        timeoutSeconds: 600
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          name: cakephp-mysql-persistent
+        name: cakephp-mysql-persistent
+      spec:
+        containers:
+        - env:
+          - name: DATABASE_SERVICE_NAME
+            value: mysql
+          - name: DATABASE_ENGINE
+            value: mysql
+          - name: DATABASE_NAME
+            value: default
+          - name: DATABASE_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: cakephp-mysql-persistent
+          - name: DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: cakephp-mysql-persistent
+          - name: CAKEPHP_SECRET_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: cakephp-secret-token
+                name: cakephp-mysql-persistent
+          - name: CAKEPHP_SECURITY_SALT
+            valueFrom:
+              secretKeyRef:
+                key: cakephp-security-salt
+                name: cakephp-mysql-persistent
+          - name: OPCACHE_REVALIDATE_FREQ
+            value: "2"
+          image: docker-registry.default.svc:5000/migration-demo/cakephp-mysql-persistent@sha256:c34dab69674d83a6cf6055214e6252ed81fcbd4b88299add400dafcb8282e72e
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health.php
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: cakephp-mysql-persistent
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health.php
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 60
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - cakephp-mysql-persistent
+        from:
+          kind: ImageStreamTag
+          name: cakephp-mysql-persistent:latest
+          namespace: migration-demo
+        lastTriggeredImage: docker-registry.default.svc:5000/migration-demo/cakephp-mysql-persistent@sha256:c34dab69674d83a6cf6055214e6252ed81fcbd4b88299add400dafcb8282e72e
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: "true"
+    creationTimestamp: null
+    generation: 3
+    labels:
+      app: jenkins-ephemeral
+      template: jenkins-ephemeral-template
+    name: jenkins
+  spec:
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      name: jenkins
+    strategy:
+      activeDeadlineSeconds: 21600
+      recreateParams:
+        timeoutSeconds: 600
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          name: jenkins
+      spec:
+        containers:
+        - env:
+          - name: OPENSHIFT_ENABLE_OAUTH
+            value: "true"
+          - name: OPENSHIFT_ENABLE_REDIRECT_PROMPT
+            value: "true"
+          - name: DISABLE_ADMINISTRATIVE_MONITORS
+            value: "false"
+          - name: KUBERNETES_MASTER
+            value: https://kubernetes.default:443
+          - name: KUBERNETES_TRUST_CERTIFICATES
+            value: "true"
+          - name: JENKINS_SERVICE_NAME
+            value: jenkins
+          - name: JNLP_SERVICE_NAME
+            value: jenkins-jnlp
+          image: docker-registry.default.svc:5000/openshift/jenkins@sha256:9cb721d34bab582ac38138893d920effd97ab3203ffeabc00be411e52924f8ce
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /login
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 420
+            periodSeconds: 360
+            successThreshold: 1
+            timeoutSeconds: 240
+          name: jenkins
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /login
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 240
+          resources:
+            limits:
+              memory: 512Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/jenkins
+            name: jenkins-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: jenkins
+        serviceAccountName: jenkins
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir: {}
+          name: jenkins-data
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - jenkins
+        from:
+          kind: ImageStreamTag
+          name: jenkins:2
+          namespace: openshift
+        lastTriggeredImage: docker-registry.default.svc:5000/openshift/jenkins@sha256:9cb721d34bab582ac38138893d920effd97ab3203ffeabc00be411e52924f8ce
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the database
+      template.alpha.openshift.io/wait-for-ready: "true"
+    creationTimestamp: null
+    generation: 2
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: mysql
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      name: mysql
+    strategy:
+      activeDeadlineSeconds: 21600
+      recreateParams:
+        timeoutSeconds: 600
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          name: mysql
+        name: mysql
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: cakephp-mysql-persistent
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: cakephp-mysql-persistent
+          - name: MYSQL_DATABASE
+            value: default
+          image: docker-registry.default.svc:5000/openshift/mysql@sha256:9a781abe7581cc141e14a7e404ec34125b3e89c008b14f4e7b41e094fd3049fe
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 3306
+            timeoutSeconds: 1
+          name: mysql
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -i
+              - -c
+              - MYSQL_PWD='UiAu5Tfpy8pctYxH' mysql -h 127.0.0.1 -u cakephp -D default
+                -e 'SELECT 1'
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/mysql/data
+            name: mysql-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - mysql
+        from:
+          kind: ImageStreamTag
+          name: mysql:5.7
+          namespace: openshift
+        lastTriggeredImage: docker-registry.default.svc:5000/openshift/mysql@sha256:9a781abe7581cc141e14a7e404ec34125b3e89c008b14f4e7b41e094fd3049fe
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    creationTimestamp: null
+    generation: 1
+    name: mysql-ocs
+  spec:
+    podManagementPolicy: Parallel
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: mysql-ocs
+    serviceName: mysql-ocs
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: mysql-ocs
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_ROOT_PASSWORD
+            value: password
+          - name: MYSQL_DATABASE
+            value: wordpress
+          - name: MYSQL_USER
+            value: admin
+          - name: MYSQL_PASSWORD
+            value: secret
+          image: mysql:5.7
+          imagePullPolicy: IfNotPresent
+          name: mysql-ocs
+          ports:
+          - containerPort: 3306
+            name: mysql
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/mysql
+            name: mysql-ocs-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 10
+    updateStrategy:
+      rollingUpdate:
+        partition: 0
+      type: RollingUpdate
+    volumeClaimTemplates:
+    - metadata:
+        creationTimestamp: null
+        name: mysql-ocs-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi
+      status:
+        phase: Pending
+  status:
+    collisionCount: 0
+    currentReplicas: 1
+    currentRevision: mysql-ocs-57798cb5bc
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updateRevision: mysql-ocs-57798cb5bc
+    updatedReplicas: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: 4c081b1b-85ee-11ea-8d88-566f39db0009
+      job-name: pi
+    name: pi
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: 4c081b1b-85ee-11ea-8d88-566f39db0009
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: 4c081b1b-85ee-11ea-8d88-566f39db0009
+          job-name: pi
+        name: pi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-24T05:42:32Z"
+    conditions:
+    - lastProbeTime: "2020-04-24T05:42:32Z"
+      lastTransitionTime: "2020-04-24T05:42:32Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-24T05:41:51Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: d07cccb1-8850-11ea-b7c9-566f39db000b
+      job-name: pi-1587969120
+      parent: cronjobpi
+    name: pi-1587969120
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: pi
+      uid: 80f1002f-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: d07cccb1-8850-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: d07cccb1-8850-11ea-b7c9-566f39db000b
+          job-name: pi-1587969120
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:32:28Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:32:28Z"
+      lastTransitionTime: "2020-04-27T06:32:28Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:32:06Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: f476f073-8850-11ea-b7c9-566f39db000b
+      job-name: pi-1587969180
+      parent: cronjobpi
+    name: pi-1587969180
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: pi
+      uid: 80f1002f-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: f476f073-8850-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: f476f073-8850-11ea-b7c9-566f39db000b
+          job-name: pi-1587969180
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:33:32Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:33:32Z"
+      lastTransitionTime: "2020-04-27T06:33:32Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:33:06Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: 18714ccb-8851-11ea-b7c9-566f39db000b
+      job-name: pi-1587969240
+      parent: cronjobpi
+    name: pi-1587969240
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: pi
+      uid: 80f1002f-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: 18714ccb-8851-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: 18714ccb-8851-11ea-b7c9-566f39db000b
+          job-name: pi-1587969240
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:34:31Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:34:31Z"
+      lastTransitionTime: "2020-04-27T06:34:31Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:34:07Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: 3c63c6c6-8851-11ea-b7c9-566f39db000b
+      job-name: pi-1587969300
+      parent: cronjobpi
+    name: pi-1587969300
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: pi
+      uid: 80f1002f-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: 3c63c6c6-8851-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: 3c63c6c6-8851-11ea-b7c9-566f39db000b
+          job-name: pi-1587969300
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:35:33Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:35:33Z"
+      lastTransitionTime: "2020-04-27T06:35:33Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:35:07Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: d0818962-8850-11ea-b7c9-566f39db000b
+      job-name: picron-1587969120
+      parent: cronjobpi
+    name: picron-1587969120
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: picron
+      uid: 9dc9475a-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: d0818962-8850-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: d0818962-8850-11ea-b7c9-566f39db000b
+          job-name: picron-1587969120
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:32:32Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:32:32Z"
+      lastTransitionTime: "2020-04-27T06:32:32Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:32:06Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: f47eda6d-8850-11ea-b7c9-566f39db000b
+      job-name: picron-1587969180
+      parent: cronjobpi
+    name: picron-1587969180
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: picron
+      uid: 9dc9475a-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: f47eda6d-8850-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: f47eda6d-8850-11ea-b7c9-566f39db000b
+          job-name: picron-1587969180
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:33:32Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:33:32Z"
+      lastTransitionTime: "2020-04-27T06:33:32Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:33:06Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: 1876b96a-8851-11ea-b7c9-566f39db000b
+      job-name: picron-1587969240
+      parent: cronjobpi
+    name: picron-1587969240
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: picron
+      uid: 9dc9475a-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: 1876b96a-8851-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: 1876b96a-8851-11ea-b7c9-566f39db000b
+          job-name: picron-1587969240
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:34:29Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:34:29Z"
+      lastTransitionTime: "2020-04-27T06:34:29Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:34:07Z"
+    succeeded: 1
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    creationTimestamp: null
+    labels:
+      controller-uid: 3c690fe8-8851-11ea-b7c9-566f39db000b
+      job-name: picron-1587969300
+      parent: cronjobpi
+    name: picron-1587969300
+    ownerReferences:
+    - apiVersion: batch/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CronJob
+      name: picron
+      uid: 9dc9475a-85ee-11ea-8d88-566f39db0009
+  spec:
+    backoffLimit: 6
+    completions: 1
+    parallelism: 1
+    selector:
+      matchLabels:
+        controller-uid: 3c690fe8-8851-11ea-b7c9-566f39db000b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          controller-uid: 3c690fe8-8851-11ea-b7c9-566f39db000b
+          job-name: picron-1587969300
+          parent: cronjobpi
+      spec:
+        containers:
+        - command:
+          - perl
+          - -Mbignum=bpi
+          - -wle
+          - print bpi(2000)
+          image: perl
+          imagePullPolicy: Always
+          name: pi
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    completionTime: "2020-04-27T06:35:31Z"
+    conditions:
+    - lastProbeTime: "2020-04-27T06:35:31Z"
+      lastTransitionTime: "2020-04-27T06:35:31Z"
+      status: "True"
+      type: Complete
+    startTime: "2020-04-27T06:35:07Z"
+    succeeded: 1
+- Spec:
+    ConcurrencyPolicy: Allow
+    FailedJobsHistoryLimit: 1
+    JobTemplate:
+      Spec:
+        ActiveDeadlineSeconds: null
+        BackoffLimit: null
+        Completions: null
+        ManualSelector: null
+        Parallelism: null
+        Selector: null
+        Template:
+          Spec:
+            ActiveDeadlineSeconds: null
+            Affinity: null
+            AutomountServiceAccountToken: null
+            Containers:
+            - Args: null
+              Command:
+              - perl
+              - -Mbignum=bpi
+              - -wle
+              - print bpi(2000)
+              Env: null
+              EnvFrom: null
+              Image: perl
+              ImagePullPolicy: Always
+              Lifecycle: null
+              LivenessProbe: null
+              Name: pi
+              Ports: null
+              ReadinessProbe: null
+              Resources:
+                Limits: null
+                Requests: null
+              SecurityContext: null
+              Stdin: false
+              StdinOnce: false
+              TTY: false
+              TerminationMessagePath: /dev/termination-log
+              TerminationMessagePolicy: File
+              VolumeDevices: null
+              VolumeMounts: null
+              WorkingDir: ""
+            DNSConfig: null
+            DNSPolicy: ClusterFirst
+            HostAliases: null
+            Hostname: ""
+            ImagePullSecrets: null
+            InitContainers: null
+            NodeName: ""
+            NodeSelector: null
+            Priority: null
+            PriorityClassName: ""
+            ReadinessGates: null
+            RestartPolicy: OnFailure
+            SchedulerName: default-scheduler
+            SecurityContext:
+              FSGroup: null
+              HostIPC: false
+              HostNetwork: false
+              HostPID: false
+              RunAsGroup: null
+              RunAsNonRoot: null
+              RunAsUser: null
+              SELinuxOptions: null
+              ShareProcessNamespace: null
+              SupplementalGroups: null
+              Sysctls: null
+            ServiceAccountName: ""
+            Subdomain: ""
+            TerminationGracePeriodSeconds: 30
+            Tolerations: null
+            Volumes: null
+          creationTimestamp: null
+          labels:
+            parent: cronjobpi
+      creationTimestamp: null
+    Schedule: '*/1 * * * *'
+    StartingDeadlineSeconds: null
+    SuccessfulJobsHistoryLimit: 3
+    Suspend: false
+  Status:
+    Active:
+    - APIVersion: batch/v1
+      FieldPath: ""
+      Kind: Job
+      Name: pi-1587969300
+      Namespace: migration-demo
+      ResourceVersion: "61416503"
+      UID: 3c63c6c6-8851-11ea-b7c9-566f39db000b
+    LastScheduleTime: "2020-04-27T06:35:00Z"
+  creationTimestamp: null
+  name: pi
+- Spec:
+    ConcurrencyPolicy: Allow
+    FailedJobsHistoryLimit: 1
+    JobTemplate:
+      Spec:
+        ActiveDeadlineSeconds: null
+        BackoffLimit: null
+        Completions: null
+        ManualSelector: null
+        Parallelism: null
+        Selector: null
+        Template:
+          Spec:
+            ActiveDeadlineSeconds: null
+            Affinity: null
+            AutomountServiceAccountToken: null
+            Containers:
+            - Args: null
+              Command:
+              - perl
+              - -Mbignum=bpi
+              - -wle
+              - print bpi(2000)
+              Env: null
+              EnvFrom: null
+              Image: perl
+              ImagePullPolicy: Always
+              Lifecycle: null
+              LivenessProbe: null
+              Name: pi
+              Ports: null
+              ReadinessProbe: null
+              Resources:
+                Limits: null
+                Requests: null
+              SecurityContext: null
+              Stdin: false
+              StdinOnce: false
+              TTY: false
+              TerminationMessagePath: /dev/termination-log
+              TerminationMessagePolicy: File
+              VolumeDevices: null
+              VolumeMounts: null
+              WorkingDir: ""
+            DNSConfig: null
+            DNSPolicy: ClusterFirst
+            HostAliases: null
+            Hostname: ""
+            ImagePullSecrets: null
+            InitContainers: null
+            NodeName: ""
+            NodeSelector: null
+            Priority: null
+            PriorityClassName: ""
+            ReadinessGates: null
+            RestartPolicy: OnFailure
+            SchedulerName: default-scheduler
+            SecurityContext:
+              FSGroup: null
+              HostIPC: false
+              HostNetwork: false
+              HostPID: false
+              RunAsGroup: null
+              RunAsNonRoot: null
+              RunAsUser: null
+              SELinuxOptions: null
+              ShareProcessNamespace: null
+              SupplementalGroups: null
+              Sysctls: null
+            ServiceAccountName: ""
+            Subdomain: ""
+            TerminationGracePeriodSeconds: 30
+            Tolerations: null
+            Volumes: null
+          creationTimestamp: null
+          labels:
+            parent: cronjobpi
+      creationTimestamp: null
+    Schedule: '*/1 * * * *'
+    StartingDeadlineSeconds: null
+    SuccessfulJobsHistoryLimit: 3
+    Suspend: false
+  Status:
+    Active:
+    - APIVersion: batch/v1
+      FieldPath: ""
+      Kind: Job
+      Name: picron-1587969300
+      Namespace: migration-demo
+      ResourceVersion: "61416505"
+      UID: 3c690fe8-8851-11ea-b7c9-566f39db000b
+    LastScheduleTime: "2020-04-27T06:35:00Z"
+  creationTimestamp: null
+  name: picron
+- apiVersion: v1
+  data:
+    special.how: very
+    special.type: charm
+  kind: ConfigMap
+  metadata:
+    creationTimestamp: null
+    name: ex-config
+- apiVersion: v1
+  data:
+    DATABASE_ENGINE: bXlzcWw=
+    DATABASE_NAME: ZGVmYXVsdA==
+    DATABASE_SERVICE_NAME: bXlzcWw=
+    DATABASE_USER: Y2FrZXBocA==
+    MEMORY_LIMIT: NTEyTWk=
+    MEMORY_MYSQL_LIMIT: NTEyTWk=
+    NAME: Y2FrZXBocC1teXNxbC1wZXJzaXN0ZW50
+    NAMESPACE: b3BlbnNoaWZ0
+    OPCACHE_REVALIDATE_FREQ: Mg==
+    PHP_VERSION: Ny4x
+    SOURCE_REPOSITORY_URL: aHR0cHM6Ly9naXRodWIuY29tL3NjbG9yZy9jYWtlcGhwLWV4LmdpdA==
+    VOLUME_CAPACITY: MUdp
+  kind: Secret
+  metadata:
+    creationTimestamp: null
+    name: c54820a3-85ea-11ea-8c65-0a580a01003d
+    ownerReferences:
+    - apiVersion: template.openshift.io/v1
+      blockOwnerDeletion: true
+      kind: BrokerTemplateInstance
+      name: c54820a3-85ea-11ea-8c65-0a580a01003d
+      uid: c5b5fbdc-85ea-11ea-acec-566f39db000a
+  type: Opaque
+- apiVersion: v1
+  data:
+    cakephp-secret-token: NElJRFQ0REdOZ0hKM05id1lPbEdYeDdiUnJiSmRJa19QT0d5bl9qeENsOER3MDNJN3g=
+    cakephp-security-salt: bXVpZlJIc3RRY0Ywc25SS283bzFtaTNJR0ZMQ2VsUk8wcFJzSGdCVg==
+    database-password: VWlBdTVUZnB5OHBjdFl4SA==
+    database-user: Y2FrZXBocA==
+  kind: Secret
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: cakephp-mysql-persistent
+  type: Opaque
+- apiVersion: v1
+  data:
+    parameters: eyJEQVRBQkFTRV9FTkdJTkUiOiJteXNxbCIsIkRBVEFCQVNFX05BTUUiOiJkZWZhdWx0IiwiREFUQUJBU0VfU0VSVklDRV9OQU1FIjoibXlzcWwiLCJEQVRBQkFTRV9VU0VSIjoiY2FrZXBocCIsIk1FTU9SWV9MSU1JVCI6IjUxMk1pIiwiTUVNT1JZX01ZU1FMX0xJTUlUIjoiNTEyTWkiLCJOQU1FIjoiY2FrZXBocC1teXNxbC1wZXJzaXN0ZW50IiwiTkFNRVNQQUNFIjoib3BlbnNoaWZ0IiwiT1BDQUNIRV9SRVZBTElEQVRFX0ZSRVEiOiIyIiwiUEhQX1ZFUlNJT04iOiI3LjEiLCJTT1VSQ0VfUkVQT1NJVE9SWV9VUkwiOiJodHRwczovL2dpdGh1Yi5jb20vc2Nsb3JnL2Nha2VwaHAtZXguZ2l0IiwiVk9MVU1FX0NBUEFDSVRZIjoiMUdpIn0=
+  kind: Secret
+  metadata:
+    creationTimestamp: null
+    name: cakephp-mysql-persistent-parameterssto1n
+    ownerReferences:
+    - apiVersion: servicecatalog.k8s.io/v1beta1
+      blockOwnerDeletion: false
+      controller: false
+      kind: ServiceInstance
+      name: cakephp-mysql-persistent-jwdsb
+      uid: c54821f6-85ea-11ea-8c65-0a580a01003d
+  type: Opaque
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    annotations:
+      pv.kubernetes.io/bind-completed: "yes"
+      pv.kubernetes.io/bound-by-controller: "yes"
+      volume.beta.kubernetes.io/storage-provisioner: redhat-emea-ssa-team/nfs-client-provisioner
+    creationTimestamp: null
+    finalizers:
+    - kubernetes.io/pvc-protection
+    labels:
+      app: cakephp-mysql-persistent
+      template: cakephp-mysql-persistent
+      template.openshift.io/template-instance-owner: c8b44570-85ea-11ea-acec-566f39db000a
+    name: mysql
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi
+    storageClassName: managed-nfs-storage
+    volumeName: pvc-c8c8c493-85ea-11ea-acec-566f39db000a
+  status: {}
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    annotations:
+      pv.kubernetes.io/bind-completed: "yes"
+      pv.kubernetes.io/bound-by-controller: "yes"
+      volume.beta.kubernetes.io/storage-provisioner: redhat-emea-ssa-team/nfs-client-provisioner
+    creationTimestamp: null
+    finalizers:
+    - kubernetes.io/pvc-protection
+    labels:
+      app: mysql-ocs
+    name: mysql-ocs-data-mysql-ocs-0
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 8Gi
+    storageClassName: managed-nfs-storage
+    volumeName: pvc-1b7c7a64-85ee-11ea-b7c9-566f39db000b
+  status: {}
+- apiVersion: autoscaling/v1
+  kind: HorizontalPodAutoscaler
+  metadata:
+    annotations:
+      autoscaling.alpha.kubernetes.io/conditions: '[{"type":"AbleToScale","status":"True","lastTransitionTime":"2020-04-27T06:13:03Z","reason":"SucceededGetScale","message":"the
+        HPA controller was able to get the target''s current scale"},{"type":"ScalingActive","status":"False","lastTransitionTime":"2020-04-27T06:13:33Z","reason":"FailedGetResourceMetric","message":"the
+        HPA was unable to compute the replica count: missing request for cpu on container
+        jenkins in pod migration-demo/jenkins-1-p8j54"}]'
+    creationTimestamp: null
+    name: jenkins
+  spec:
+    maxReplicas: 10
+    minReplicas: 2
+    scaleTargetRef:
+      apiVersion: apps.openshift.io/v1
+      kind: DeploymentConfig
+      name: jenkins
+    targetCPUUtilizationPercentage: 80
+  status:
+    currentReplicas: 2
+    desiredReplicas: 2
+    lastScaleTime: "2020-04-27T06:13:03Z"
+- apiVersion: v1
+  kind: LimitRange
+  metadata:
+    creationTimestamp: null
+    name: core-resource-limits
+  spec:
+    limits:
+    - max:
+        cpu: "4"
+        memory: 1Gi
+      min:
+        cpu: 200m
+        memory: 6Mi
+      type: Pod
+    - default:
+        cpu: 300m
+        memory: 200Mi
+      defaultRequest:
+        cpu: 200m
+        memory: 100Mi
+      max:
+        cpu: "4"
+        memory: 4Gi
+      maxLimitRequestRatio:
+        cpu: "20"
+      min:
+        cpu: 100m
+        memory: 4Mi
+      type: Container
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    creationTimestamp: null
+    name: object-counts
+  spec:
+    hard:
+      configmaps: "10"
+      persistentvolumeclaims: "4"
+      replicationcontrollers: "20"
+      secrets: "30"
+      services: "10"
+  status: {}
