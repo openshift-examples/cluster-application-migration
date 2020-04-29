@@ -17,7 +17,7 @@ oc delete project --wait=false -l demo=migration
 
 ## Optional, test CRD's
 
-```
+```yaml
 oc create -f - <<EOF 
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -35,7 +35,9 @@ spec:
     status: {}
   version: v1
 EOF
+```
 
+```yaml
 oc create -f - <<EOF
 apiVersion: openshift.pub/v1
 kind: Car
