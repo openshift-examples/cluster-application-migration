@@ -56,3 +56,8 @@ done
 
 echo " wordpress is ready!"
 set -e
+
+echo 
+echo "It is recommend to suspend all cronjobs to avoid massive pod load"
+echo "  oc patch -n $NAMESPACE cronjobs pi -p '{\"spec\":{\"suspend\":true}}'"
+echo "  oc patch -n $NAMESPACE cronjobs picron -p '{\"spec\":{\"suspend\":true}}'"
